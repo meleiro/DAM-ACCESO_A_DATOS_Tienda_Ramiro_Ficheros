@@ -240,7 +240,7 @@ public class VentanaPrincipal extends JFrame {
         try {
             switch (formato) {
                 case "TXT" ->{
-                    System.out.println("TXT todavía no implementado");
+                    GestorFicheros.exportarClientesTxt(ruta, servicio.getClientes());
 
                 }
                 case "CSV" -> {
@@ -281,16 +281,14 @@ public class VentanaPrincipal extends JFrame {
                     System.out.println("XML todavía no implementado");
                     yield new ArrayList<>();
                 }
-                default -> {
-                    System.out.println("TXT todavía no implementado");
-                    yield new ArrayList<>();
-                }
+                default -> GestorFicheros.importarClientesTxt(ruta);
+
             };
             servicio.getClientes().clear();
             servicio.getClientes().addAll(datos);
             actualizarTablaClientes();
             informar("Clientes importados desde " + formato + ": " + datos.size());
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             mostrarError("Error importando:\n" + ex.getMessage());
         }
     }
