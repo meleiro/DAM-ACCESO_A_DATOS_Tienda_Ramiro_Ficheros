@@ -1,0 +1,16 @@
+<ClientesXml>
+  <clientes>
+    <clientes>
+      <id>1</id>
+      <nombre>Ana García</nombre>
+      <email>ana@email.com</email>
+      <telefono>600123123</telefono>
+    </clientes>
+    <clientes>
+      <id>2</id>
+      <nombre>Luis Pérez</nombre>
+      <email>luis@email.com</email>
+      <telefono>611234234</telefono>
+    </clientes>
+  </clientes>
+</ClientesXml>

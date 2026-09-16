@@ -1,0 +1,16 @@
+<ProductosXml>
+  <productos>
+    <productos>
+      <id>1</id>
+      <nombre>Monitor 27 pulgadas</nombre>
+      <precio>249.99</precio>
+      <stock>12</stock>
+    </productos>
+    <productos>
+      <id>2</id>
+      <nombre>Teclado mecánico</nombre>
+      <precio>79.95</precio>
+      <stock>25</stock>
+    </productos>
+  </productos>
+</ProductosXml>
