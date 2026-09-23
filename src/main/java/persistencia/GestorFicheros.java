@@ -1191,22 +1191,7 @@ public class GestorFicheros {
                     resultado.add(cliente);
 
 
-                    /*
-                     * También podríamos haberlo hecho directamente,
-                     * como aparece en vuestro código original:
-                     *
-                     * resultado.add(
-                     *     new Cliente(
-                     *         Integer.parseInt(c.get(0)),
-                     *         c.get(1),
-                     *         c.get(2),
-                     *         c.get(3)
-                     *     )
-                     * );
-                     *
-                     * Separarlo en variables ocupa más código,
-                     * pero inicialmente es más fácil de explicar.
-                     */
+
 
 
                 } catch (NumberFormatException e) {
