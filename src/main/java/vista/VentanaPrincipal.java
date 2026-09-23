@@ -244,7 +244,7 @@ public class VentanaPrincipal extends JFrame {
 
                 }
                 case "CSV" -> {
-                    System.out.println("CSV todavía no implementado");
+                    GestorFicheros.exportarClientesCsv(ruta, servicio.getClientes());
 
                 }
                 case "JSON" -> {
@@ -269,10 +269,9 @@ public class VentanaPrincipal extends JFrame {
         if (ruta == null) return;
         try {
             List<Cliente> datos = switch (formato) {
-                case "CSV" -> {
-                    System.out.println("CSV todavía no implementado");
-                    yield new ArrayList<>();
-                }
+                case "CSV" ->
+                    GestorFicheros.importarClientesCsv(ruta);
+
                 case "JSON" -> {
                     System.out.println("JSON todavía no implementado");
                     yield new ArrayList<>();

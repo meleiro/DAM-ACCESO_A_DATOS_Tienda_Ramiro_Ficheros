@@ -1,784 +1,293 @@
 package persistencia;
 
-
-/*
- * ================================================================
- * IMPORTACIONES
- * ================================================================
- *
- * Una importación permite utilizar en esta clase otras clases
- * que se encuentran en paquetes diferentes.
- *
- * Podemos distinguir dos grupos:
- *
- * 1. Clases externas: Jackson.
- * 2. Clases propias del proyecto: Cliente y Producto.
- * 3. Clases incluidas en Java: java.io, java.nio, java.util...
- */
-
-
-/*
- * Estas cuatro importaciones pertenecen a JACKSON.
- *
- * En esta primera versión, donde solamente estamos trabajando
- * con TXT, TODAVÍA NO LAS NECESITAMOS.
- *
- * Las utilizaremos posteriormente cuando incorporemos
- * JSON y XML.
- *
- * Esto puede ser interesante para explicar a los alumnos
- * que una importación no hace nada por sí misma:
- * simplemente permite utilizar una clase en nuestro código.
- */
-
-// Se utilizará posteriormente para indicar tipos genéricos
-// a Jackson, por ejemplo List<Cliente>.
 import com.fasterxml.jackson.core.type.TypeReference;
-
-// Clase principal de Jackson para trabajar con JSON.
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-// Permite configurar diferentes opciones de serialización,
-// por ejemplo generar JSON/XML indentado.
 import com.fasterxml.jackson.databind.SerializationFeature;
-
-// Variante de ObjectMapper especializada en XML.
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
-
-/*
- * ================================================================
- * CLASES DE NUESTRO PROYECTO
- * ================================================================
- */
-
-// Representa la entidad Cliente.
 import modelo.Cliente;
-
-// Representa la entidad Producto.
-// En este código todavía no se utiliza.
 import modelo.Producto;
 
-
-/*
- * ================================================================
- * CLASES DEL JDK
- * ================================================================
- */
-
-/*
- * java.io contiene muchas clases relacionadas con
- * entrada y salida de datos.
- *
- * El * significa:
- *
- *      importa las clases públicas de java.io
- *
- * En nuestro código utilizaremos principalmente:
- *
- *      BufferedWriter
- *      BufferedReader
- *      IOException
- */
 import java.io.*;
-
-
-/*
- * StandardCharsets contiene codificaciones estándar.
- *
- * Nosotros utilizaremos UTF-8 para leer y escribir
- * nuestros ficheros de texto.
- */
 import java.nio.charset.StandardCharsets;
-
-
-/*
- * java.nio.file contiene la API moderna de Java
- * para trabajar con rutas y ficheros.
- *
- * De aquí utilizaremos fundamentalmente:
- *
- *      Path
- *      Files
- */
 import java.nio.file.*;
-
-
-/*
- * ArrayList es una implementación concreta
- * de la interfaz List.
- */
 import java.util.ArrayList;
-
-
-/*
- * List representa una colección ordenada de elementos.
- *
- * Por ejemplo:
- *
- *      List<Cliente>
- *
- * significa:
- *
- *      "una lista que contiene objetos Cliente"
- */
 import java.util.List;
 
 
-/*
+/**
  * ================================================================
- * CLASE GestorFicheros
+ * GESTOR DE FICHEROS
  * ================================================================
  *
- * Esta clase va a concentrar las operaciones relacionadas
- * con la persistencia en ficheros.
+ * Esta clase concentra la lógica relacionada con la persistencia
+ * de nuestros objetos en ficheros.
  *
- * En lugar de poner la lógica de lectura/escritura dentro
- * de la ventana gráfica, la separamos.
+ * La idea es separar responsabilidades:
  *
- *
- * Podríamos visualizarlo así:
- *
- *      INTERFAZ
- *          |
- *          v
- *      SERVICIO
- *          |
- *          v
- *   GestorFicheros
- *          |
- *          v
- *     clientes.txt
+ *      INTERFAZ GRÁFICA
+ *             |
+ *             v
+ *         SERVICIO
+ *             |
+ *             v
+ *      GestorFicheros
+ *             |
+ *             v
+ *          FICHEROS
  *
  *
- * En esta primera versión solamente implementamos TXT.
+ * En esta fase estamos trabajando con dos formatos:
+ *
+ *      TXT
+ *      CSV
+ *
+ *
+ * Posteriormente incorporaremos:
+ *
+ *      XML
+ *      JSON
+ *
+ *
+ * IMPORTANTE:
+ *
+ * Para TXT y CSV estamos realizando nosotros manualmente
+ * la transformación entre objetos Java y texto.
+ *
+ * Más adelante, con XML y JSON, utilizaremos Jackson para
+ * realizar gran parte de ese trabajo automáticamente.
  */
 public class GestorFicheros {
 
 
-    /*
+    // ============================================================
+    // TXT
+    // ============================================================
+
+
+    /**
      * ============================================================
      * EXPORTAR CLIENTES A TXT
      * ============================================================
      *
-     * El objetivo de este método es transformar:
+     * Transforma una lista de objetos Cliente en un fichero
+     * de texto.
      *
-     *      List<Cliente>
+     * Hemos decidido utilizar ";" como separador.
      *
-     * en:
+     * Ejemplo:
      *
-     *      fichero TXT
-     *
-     *
-     * Supongamos que tenemos:
-     *
-     * Cliente:
-     *
+     *      Cliente
+     *      -------
      *      id       = 1
-     *      nombre   = "Ana"
-     *      email    = "ana@email.com"
-     *      telefono = "600123456"
+     *      nombre   = Ana
+     *      email    = ana@email.com
+     *      telefono = 600123456
      *
-     *
-     * Nosotros hemos decidido representarlo así:
+     * se guardará como:
      *
      *      1;Ana;ana@email.com;600123456
      *
-     *
-     * Por tanto, estamos creando nuestro propio
-     * formato de almacenamiento.
-     *
-     * El carácter ";" funciona como DELIMITADOR.
      */
     public static void exportarClientesTxt(
-
-            /*
-             * Path representa la RUTA donde queremos
-             * guardar el fichero.
-             *
-             * IMPORTANTE:
-             *
-             * Path NO contiene el fichero.
-             * Path representa su ubicación.
-             *
-             * Ejemplo:
-             *
-             *      Path.of("clientes.txt")
-             */
             Path ruta,
-
-
-            /*
-             * Recibimos también la lista de clientes
-             * que queremos guardar.
-             */
             List<Cliente> clientes
-
-
     ) throws IOException {
 
-        /*
-         * throws IOException
-         * ------------------
-         *
-         * Las operaciones con ficheros pueden fallar.
-         *
-         * Por ejemplo:
-         *
-         *      - no tenemos permisos de escritura;
-         *      - la carpeta no existe;
-         *      - el disco no está disponible;
-         *      - se produce un problema de entrada/salida.
-         *
-         * IOException es una CHECKED EXCEPTION.
-         *
-         * Eso significa que Java nos obliga a:
-         *
-         *      1. capturarla con try-catch
-         *
-         * o
-         *
-         *      2. declararla con throws
-         *
-         *
-         * Aquí hemos elegido:
-         *
-         *      throws IOException
-         *
-         * Por tanto, quien llame a este método tendrá
-         * que decidir cómo gestionar el posible error.
-         */
-
 
         /*
-         * ========================================================
-         * TRY-WITH-RESOURCES
-         * ========================================================
+         * Files.newBufferedWriter(...)
          *
-         * Esta construcción:
+         * abre un fichero para escritura.
          *
-         *      try (recurso) {
+         * Utilizamos UTF-8 para que caracteres como:
+         *
+         *      á
+         *      é
+         *      ñ
+         *      €
+         *
+         * se almacenen correctamente.
+         *
+         *
+         * El try-with-resources:
+         *
+         *      try (...) {
          *
          *      }
          *
-         * se denomina try-with-resources.
-         *
-         * Su gran ventaja es que Java cierra automáticamente
-         * el recurso cuando terminamos.
-         *
-         * Por tanto, NO necesitamos escribir:
-         *
-         *      bw.close();
-         *
-         * manualmente.
-         *
-         *
-         * Esto es especialmente importante con:
-         *
-         *      ficheros
-         *      conexiones de base de datos
-         *      streams
-         *      sockets
-         *      etc.
+         * garantiza que Java cerrará automáticamente
+         * el BufferedWriter al terminar.
          */
-        try (
-                /*
-                 * Files.newBufferedWriter(...)
-                 *
-                 * abre un fichero para escritura de texto
-                 * y devuelve un BufferedWriter.
-                 *
-                 *
-                 * BufferedWriter
-                 * --------------
-                 *
-                 * Es un flujo de escritura de texto que utiliza
-                 * un BUFFER.
-                 *
-                 * Simplificando:
-                 *
-                 * Programa
-                 *    |
-                 *    v
-                 *  BUFFER
-                 *    |
-                 *    v
-                 * fichero
-                 *
-                 *
-                 * El buffer permite realizar la escritura
-                 * de manera eficiente.
-                 */
-                BufferedWriter bw =
-                        Files.newBufferedWriter(
-
-                                /*
-                                 * Dónde escribir.
-                                 */
-                                ruta,
-
-                                /*
-                                 * Qué codificación utilizar.
-                                 *
-                                 * UTF-8 permite representar
-                                 * correctamente caracteres como:
-                                 *
-                                 *      ñ
-                                 *      á
-                                 *      é
-                                 *      €
-                                 */
-                                StandardCharsets.UTF_8
-                        )
-
-        ) {
+        try (BufferedWriter bw =
+                     Files.newBufferedWriter(
+                             ruta,
+                             StandardCharsets.UTF_8
+                     )) {
 
 
             /*
-             * ====================================================
-             * RECORREMOS LOS CLIENTES
-             * ====================================================
+             * Recorremos todos los clientes.
              *
-             * Este es un for-each.
+             * En cada iteración:
              *
-             * Se puede leer:
+             *      c
              *
-             *      "Para cada Cliente c
-             *       que exista dentro de clientes..."
+             * representa un Cliente diferente.
              */
             for (Cliente c : clientes) {
 
 
                 /*
-                 * =================================================
-                 * ESCRIBIMOS UN CLIENTE
-                 * =================================================
+                 * Construimos manualmente la representación
+                 * textual del Cliente.
                  *
-                 * bw.write(...) espera texto.
+                 * Por ejemplo:
                  *
-                 * Por tanto, tenemos que convertir nuestro
-                 * objeto Cliente en una representación textual.
+                 *      1;Ana;ana@email.com;600123456
                  *
                  *
-                 * Estamos haciendo manualmente:
+                 * Estamos realizando una SERIALIZACIÓN MANUAL:
                  *
                  *      Cliente
-                 *         |
-                 *         v
+                 *         ↓
                  *      String
-                 *         |
-                 *         v
-                 *        TXT
-                 *
-                 *
-                 * A este proceso podemos llamarlo
-                 * SERIALIZACIÓN.
-                 *
-                 * En este caso es una serialización manual,
-                 * porque nosotros decidimos exactamente
-                 * cómo transformar el objeto.
+                 *         ↓
+                 *      fichero
                  */
                 bw.write(
-
-                        /*
-                         * Primer campo: id.
-                         */
                         c.getId()
-
-                                /*
-                                 * Separador.
-                                 */
                                 + ";"
-
-                                /*
-                                 * Segundo campo: nombre.
-                                 */
                                 + c.getNombre()
-
-                                /*
-                                 * Separador.
-                                 */
                                 + ";"
-
-                                /*
-                                 * Tercer campo: email.
-                                 */
                                 + c.getEmail()
-
-                                /*
-                                 * Separador.
-                                 */
                                 + ";"
-
-                                /*
-                                 * Cuarto campo: teléfono.
-                                 */
                                 + c.getTelefono()
                 );
 
 
                 /*
-                 * Después de escribir un Cliente,
-                 * añadimos un salto de línea.
-                 *
-                 * Así conseguimos:
-                 *
-                 *      un cliente = una línea
-                 *
-                 *
-                 * Por ejemplo:
-                 *
-                 * 1;Ana;ana@email.com;600111111
-                 * 2;Pedro;pedro@email.com;600222222
-                 * 3;Lucía;lucia@email.com;600333333
+                 * Cada Cliente ocupará una línea.
                  */
                 bw.newLine();
-
             }
-
         }
-
-        /*
-         * Al salir del try, Java cierra automáticamente
-         * el BufferedWriter.
-         */
     }
 
 
-
-    /*
+    /**
      * ============================================================
      * IMPORTAR CLIENTES DESDE TXT
      * ============================================================
      *
-     * Ahora realizamos exactamente el proceso contrario.
+     * Hace el proceso contrario:
      *
-     *
-     * EXPORTAR:
-     *
+     *      fichero
+     *         ↓
+     *      String
+     *         ↓
      *      Cliente
-     *         |
-     *         v
-     *       texto
-     *         |
-     *         v
-     *       fichero
      *
-     *
-     * IMPORTAR:
-     *
-     *       fichero
-     *          |
-     *          v
-     *        texto
-     *          |
-     *          v
-     *       Cliente
-     *
-     *
-     * El método devuelve:
-     *
-     *      List<Cliente>
-     *
-     * porque el fichero puede contener muchos clientes.
      */
     public static List<Cliente> importarClientesTxt(
-
-            /*
-             * Ruta del fichero que queremos leer.
-             */
             Path ruta
-
     ) throws IOException {
 
 
         /*
-         * ========================================================
-         * LISTA DE RESULTADOS
-         * ========================================================
-         *
-         * Creamos una lista vacía.
-         *
-         * Cada vez que consigamos reconstruir correctamente
-         * un Cliente desde una línea del fichero,
-         * lo añadiremos a esta lista.
-         *
-         *
-         * Aquí es muy interesante explicar:
-         *
-         *      List<Cliente>      → interfaz
-         *
-         *      ArrayList<>        → implementación
-         *
-         *
-         * Programamos contra la interfaz:
+         * Aquí iremos guardando todos los clientes
+         * que consigamos reconstruir correctamente.
          */
-        List<Cliente> resultado =
-                new ArrayList<>();
+        List<Cliente> resultado = new ArrayList<>();
 
 
         /*
-         * ========================================================
-         * ABRIMOS EL FICHERO PARA LECTURA
-         * ========================================================
+         * Abrimos el fichero para lectura.
          */
-        try (
-                /*
-                 * BufferedReader permite leer texto
-                 * utilizando un buffer.
-                 *
-                 * Si BufferedWriter era:
-                 *
-                 *      programa → fichero
-                 *
-                 * BufferedReader será:
-                 *
-                 *      fichero → programa
-                 */
-                BufferedReader br =
-                        Files.newBufferedReader(
-
-                                /*
-                                 * Fichero que queremos leer.
-                                 */
-                                ruta,
-
-                                /*
-                                 * Utilizamos la misma codificación
-                                 * que utilizamos al escribir.
-                                 *
-                                 * Si escribimos UTF-8, es lógico
-                                 * leer también UTF-8.
-                                 */
-                                StandardCharsets.UTF_8
-                        )
-
-        ) {
+        try (BufferedReader br =
+                     Files.newBufferedReader(
+                             ruta,
+                             StandardCharsets.UTF_8
+                     )) {
 
 
             /*
-             * Variable temporal.
-             *
-             * Aquí iremos almacenando cada línea
-             * que leamos del fichero.
+             * Variable que almacenará temporalmente
+             * cada línea del fichero.
              */
             String linea;
 
 
             /*
-             * ====================================================
-             * LEEMOS LÍNEA A LÍNEA
-             * ====================================================
+             * readLine() devuelve:
              *
-             * br.readLine()
-             *
-             * intenta leer una línea.
-             *
-             * Puede devolver:
-             *
-             *      "1;Ana;ana@email.com;600123456"
+             *      una línea
              *
              * o:
              *
              *      null
              *
-             * cuando hemos llegado al final del fichero.
-             *
-             *
-             * Por eso:
-             *
-             * while ((linea = br.readLine()) != null)
-             *
-             * significa:
-             *
-             *      "Mientras siga existiendo una línea
-             *       que podamos leer..."
+             * cuando llegamos al final del fichero.
              */
             while ((linea = br.readLine()) != null) {
 
 
                 /*
-                 * =================================================
-                 * SEPARAMOS LOS CAMPOS
-                 * =================================================
+                 * Dividimos la línea utilizando ";".
                  *
-                 * Supongamos:
+                 * Ejemplo:
                  *
-                 * linea =
+                 *      1;Ana;ana@email.com;600123456
                  *
-                 * "1;Ana;ana@email.com;600123456"
+                 * se convierte en:
                  *
-                 *
-                 * split(";")
-                 *
-                 * divide el String utilizando ";".
-                 *
-                 *
-                 * Resultado:
-                 *
-                 * p[0] = "1"
-                 * p[1] = "Ana"
-                 * p[2] = "ana@email.com"
-                 * p[3] = "600123456"
-                 *
-                 *
-                 * Por eso utilizamos un array:
-                 *
-                 *      String[] p
+                 *      p[0] -> "1"
+                 *      p[1] -> "Ana"
+                 *      p[2] -> "ana@email.com"
+                 *      p[3] -> "600123456"
                  */
-                String[] p =
-                        linea.split(";");
+                String[] p = linea.split(";");
 
 
                 /*
-                 * =================================================
-                 * VALIDAMOS LA ESTRUCTURA
-                 * =================================================
+                 * Nuestro Cliente necesita exactamente
+                 * cuatro campos.
                  *
-                 * Nuestro formato dice:
-                 *
-                 * Cliente =
-                 *
-                 *      id
-                 *      nombre
-                 *      email
-                 *      teléfono
-                 *
-                 * Por tanto necesitamos exactamente:
-                 *
-                 *      4 campos
-                 *
-                 *
-                 * Si tenemos:
-                 *
-                 *      p.length != 4
-                 *
-                 * significa que la línea no tiene
-                 * la estructura esperada.
+                 * Si no tenemos cuatro, descartamos la línea.
                  */
                 if (p.length != 4) {
-
-
-                    /*
-                     * continue NO termina el while.
-                     *
-                     * Lo que hace es:
-                     *
-                     *      "abandona esta iteración
-                     *       y pasa a la siguiente."
-                     *
-                     *
-                     * Ejemplo:
-                     *
-                     * línea 1 → correcta → importar
-                     *
-                     * línea 2 → incorrecta → continue
-                     *
-                     * línea 3 → seguimos procesando
-                     */
                     continue;
                 }
 
 
-                /*
-                 * =================================================
-                 * CONVERTIMOS LOS DATOS
-                 * =================================================
-                 *
-                 * Aunque el fichero contenga:
-                 *
-                 *      15
-                 *
-                 * nosotros lo hemos leído como:
-                 *
-                 *      "15"
-                 *
-                 * Es decir:
-                 *
-                 *      String
-                 *
-                 * No como:
-                 *
-                 *      int
-                 *
-                 * Por eso necesitamos convertir determinados
-                 * campos a sus tipos Java correspondientes.
-                 */
                 try {
 
-
                     /*
-                     * p[0] contiene el id.
+                     * El fichero solamente contiene texto.
                      *
-                     * Pero:
+                     * Por tanto:
                      *
-                     *      p[0] es String
+                     *      p[0]
                      *
-                     * y:
+                     * es un String.
                      *
-                     *      Cliente.id es int
+                     * Tenemos que convertirlo:
                      *
-                     *
-                     * Integer.parseInt realiza:
-                     *
-                     *      String → int
-                     *
-                     *
-                     * "123"
-                     *    |
-                     *    v
-                     *   123
+                     *      "123" -> 123
                      */
-                    int id =
-                            Integer.parseInt(p[0]);
+                    int id = Integer.parseInt(p[0]);
 
 
                     /*
-                     * Estos campos ya tienen el tipo String,
-                     * por lo que no necesitan conversión.
+                     * Estos campos ya son String.
                      */
-                    String nombre =
-                            p[1];
-
-                    String email =
-                            p[2];
-
-                    String telefono =
-                            p[3];
+                    String nombre = p[1];
+                    String email = p[2];
+                    String telefono = p[3];
 
 
                     /*
-                     * =================================================
-                     * RECONSTRUIMOS EL OBJETO
-                     * =================================================
-                     *
-                     * Ya tenemos:
-                     *
-                     *      int id
-                     *      String nombre
-                     *      String email
-                     *      String telefono
-                     *
-                     * Ahora podemos crear:
-                     *
-                     *      new Cliente(...)
-                     *
-                     *
-                     * Estamos haciendo:
-                     *
-                     *      String
-                     *         |
-                     *         v
-                     *      campos
-                     *         |
-                     *         v
-                     *      tipos Java
-                     *         |
-                     *         v
-                     *      Cliente
-                     *
-                     *
-                     * Esto es DESERIALIZACIÓN manual.
+                     * Reconstruimos el objeto Cliente.
                      */
                     Cliente cliente =
                             new Cliente(
@@ -790,56 +299,929 @@ public class GestorFicheros {
 
 
                     /*
-                     * Añadimos el Cliente reconstruido
-                     * a nuestra lista de resultados.
+                     * Lo añadimos a la lista.
+                     */
+                    resultado.add(cliente);
+
+
+                } catch (NumberFormatException ex) {
+
+                    /*
+                     * Si encontramos:
+                     *
+                     *      ABC;Ana;ana@email.com;600123456
+                     *
+                     * Integer.parseInt("ABC")
+                     *
+                     * provocará NumberFormatException.
+                     */
+                    System.err.println(
+                            "Cliente incorrecto: " + linea
+                    );
+                }
+            }
+        }
+
+
+        return resultado;
+    }
+
+
+
+    // ============================================================
+    // CSV
+    // ============================================================
+
+
+    /*
+     * Ahora aparece un problema nuevo.
+     *
+     * CSV utiliza normalmente una coma como separador.
+     *
+     * Podríamos tener:
+     *
+     *      1,Ana,ana@email.com,600123456
+     *
+     *
+     * Pero ¿qué sucede si el propio dato contiene una coma?
+     *
+     * Por ejemplo:
+     *
+     *      Pérez, Juan
+     *
+     *
+     * No podemos escribir:
+     *
+     *      1,Pérez, Juan,email,telefono
+     *
+     * porque parecería que Pérez y Juan son campos distintos.
+     *
+     *
+     * CSV permite utilizar comillas:
+     *
+     *      1,"Pérez, Juan",email,telefono
+     *
+     *
+     * Por tanto necesitamos implementar dos procesos:
+     *
+     *
+     * ESCRITURA:
+     *
+     *      String
+     *        ↓
+     *      csv()
+     *        ↓
+     *      campo correctamente escapado
+     *
+     *
+     * LECTURA:
+     *
+     *      línea CSV
+     *        ↓
+     *      parseCsv()
+     *        ↓
+     *      campos individuales
+     */
+
+
+
+    /**
+     * ============================================================
+     * MÉTODO csv()
+     * ============================================================
+     *
+     * Recibe UN campo y devuelve ese campo preparado
+     * para poder introducirlo correctamente en nuestro CSV.
+     *
+     * IMPORTANTE:
+     *
+     * Este método NO escribe en el fichero.
+     *
+     * Solamente transforma un String.
+     *
+     *
+     * Ejemplos:
+     *
+     *      csv("Ana")
+     *
+     * devuelve:
+     *
+     *      Ana
+     *
+     *
+     * Pero:
+     *
+     *      csv("Pérez, Juan")
+     *
+     * devuelve:
+     *
+     *      "Pérez, Juan"
+     *
+     */
+    private static String csv(String valor) {
+
+
+        /*
+         * PRIMER CASO:
+         *
+         * El valor recibido es null.
+         *
+         * No podemos hacer:
+         *
+         *      valor.contains(...)
+         *
+         * sobre null porque provocaría:
+         *
+         *      NullPointerException
+         *
+         * Hemos decidido representar null mediante
+         * una cadena vacía.
+         */
+        if (valor == null) {
+            return "";
+        }
+
+
+        /*
+         * Comprobamos si el contenido tiene alguno
+         * de los caracteres que necesitan tratamiento
+         * especial:
+         *
+         *      ,
+         *      "
+         *      salto de línea
+         *
+         *
+         * || significa OR lógico.
+         *
+         * Basta con que UNA de las condiciones sea true
+         * para entrar en el if.
+         */
+        if (
+                valor.contains(",")
+                        || valor.contains("\"")
+                        || valor.contains("\n")
+        ) {
+
+
+            /*
+             * Aquí hacemos DOS operaciones diferentes.
+             *
+             *
+             * OPERACIÓN 1
+             * -----------
+             *
+             * Escapar las comillas interiores.
+             *
+             * En CSV una comilla interior se puede representar
+             * duplicándola.
+             *
+             *
+             * Tenemos:
+             *
+             *      Tienda "Pepe"
+             *
+             * Después de:
+             *
+             *      valor.replace("\"", "\"\"")
+             *
+             * tendremos:
+             *
+             *      Tienda ""Pepe""
+             *
+             *
+             * IMPORTANTE:
+             *
+             * \" es simplemente la manera de representar
+             * el carácter " dentro de un String Java.
+             *
+             *
+             * OPERACIÓN 2
+             * -----------
+             *
+             * Rodeamos todo el campo con comillas.
+             *
+             *
+             * Resultado final:
+             *
+             *      "Tienda ""Pepe"""
+             *
+             *
+             * Otro ejemplo:
+             *
+             *      Pérez, Juan
+             *
+             * se convierte en:
+             *
+             *      "Pérez, Juan"
+             *
+             *
+             * IMPORTANTE:
+             *
+             * Este replace NO elimina saltos de línea.
+             *
+             * Solamente sustituye:
+             *
+             *      "
+             *
+             * por:
+             *
+             *      ""
+             */
+            return "\""
+                    + valor.replace("\"", "\"\"")
+                    + "\"";
+        }
+
+
+        /*
+         * Si el valor no tiene:
+         *
+         *      comas
+         *      comillas
+         *      saltos de línea
+         *
+         * no necesitamos modificarlo.
+         */
+        return valor;
+    }
+
+
+
+    /**
+     * ============================================================
+     * parseCsv()
+     * ============================================================
+     *
+     * Este método hace aproximadamente el proceso contrario
+     * de csv().
+     *
+     *
+     * Recibe UNA LÍNEA completa:
+     *
+     *      3,"Pérez, ""Juan""",Ourense,Pepa
+     *
+     *
+     * y debe obtener los diferentes campos.
+     *
+     *
+     * NO podemos utilizar:
+     *
+     *      linea.split(",")
+     *
+     * porque la coma puede aparecer dentro de un campo:
+     *
+     *              ↓
+     *      "Pérez, Juan"
+     *
+     *
+     * Esa coma NO separa columnas.
+     *
+     *
+     * Por eso necesitamos analizar la línea
+     * CARÁCTER A CARÁCTER.
+     */
+    private static List<String> parseCsv(String linea) {
+
+
+        /*
+         * Lista donde almacenaremos los campos
+         * que vayamos encontrando.
+         *
+         * Por ejemplo, finalmente podríamos tener:
+         *
+         *      campos[0] -> "3"
+         *      campos[1] -> "Pérez, \"Juan\""
+         *      campos[2] -> "Ourense"
+         *      campos[3] -> "Pepa"
+         */
+        List<String> campos = new ArrayList<>();
+
+
+        /*
+         * StringBuilder
+         * ========================================================
+         *
+         * Necesitamos construir cada campo poco a poco.
+         *
+         * Como vamos a recorrer caracteres individualmente,
+         * utilizamos StringBuilder.
+         *
+         *
+         * Por ejemplo:
+         *
+         * leemos:
+         *
+         *      P
+         *      é
+         *      r
+         *      e
+         *      z
+         *
+         * y hacemos:
+         *
+         *      actual.append('P');
+         *      actual.append('é');
+         *      ...
+         *
+         * hasta obtener:
+         *
+         *      "Pérez"
+         *
+         *
+         * StringBuilder es especialmente apropiado cuando
+         * construimos texto mediante muchas modificaciones.
+         */
+        StringBuilder actual = new StringBuilder();
+
+
+        /*
+         * Esta variable es fundamental.
+         *
+         * Nos dice si actualmente estamos:
+         *
+         *      FUERA de un campo entrecomillado
+         *
+         * o:
+         *
+         *      DENTRO de un campo entrecomillado.
+         *
+         *
+         * false:
+         *
+         *      estamos fuera
+         *
+         * true:
+         *
+         *      estamos dentro
+         *
+         *
+         * Inicialmente estamos fuera.
+         */
+        boolean entreComillas = false;
+
+
+        /*
+         * Ejemplo que queremos interpretar:
+         *
+         *      3,"Pérez, ""Juan""",Ourense,Pepa
+         *
+         *
+         * Recorreremos:
+         *
+         *      3
+         *      ,
+         *      "
+         *      P
+         *      é
+         *      r
+         *      e
+         *      z
+         *      ,
+         *      ...
+         *
+         * carácter por carácter.
+         */
+        for (int i = 0; i < linea.length(); i++) {
+
+
+            /*
+             * charAt(i) devuelve el carácter que ocupa
+             * la posición i.
+             *
+             * Si:
+             *
+             *      linea = "Ana"
+             *
+             * tendremos:
+             *
+             *      charAt(0) -> 'A'
+             *      charAt(1) -> 'n'
+             *      charAt(2) -> 'a'
+             */
+            char c = linea.charAt(i);
+
+
+
+            /*
+             * ====================================================
+             * CASO 1: ENCONTRAMOS UNA COMILLA
+             * ====================================================
+             */
+            if (c == '"') {
+
+
+                /*
+                 * Tenemos que distinguir dos situaciones.
+                 *
+                 *
+                 * SITUACIÓN A:
+                 *
+                 * Estamos dentro de un campo entrecomillado
+                 * Y la siguiente posición también contiene ".
+                 *
+                 *
+                 * Es decir:
+                 *
+                 *      ""
+                 *
+                 *
+                 * Eso representa una comilla REAL que forma
+                 * parte del contenido.
+                 *
+                 *
+                 * Ejemplo CSV:
+                 *
+                 *      "Pérez, ""Juan"""
+                 *
+                 *
+                 * Las comillas dobles alrededor de Juan
+                 * representan:
+                 *
+                 *      Pérez, "Juan"
+                 */
+                if (
+                        entreComillas
+
+                                /*
+                                 * Comprobamos primero que exista
+                                 * una posición siguiente.
+                                 *
+                                 * Esto evita intentar acceder
+                                 * fuera del String.
+                                 */
+                                && i + 1 < linea.length()
+
+                                /*
+                                 * Comprobamos si el siguiente
+                                 * carácter también es ".
+                                 */
+                                && linea.charAt(i + 1) == '"'
+                ) {
+
+
+                    /*
+                     * Hemos encontrado:
+                     *
+                     *      ""
+                     *
+                     * dentro de un campo.
+                     *
+                     * Eso representa UNA comilla real.
+                     *
+                     * Añadimos:
+                     *
+                     *      "
+                     *
+                     * al contenido actual.
+                     */
+                    actual.append('"');
+
+
+                    /*
+                     * MUY IMPORTANTE:
+                     *
+                     * Hemos consumido DOS caracteres:
+                     *
+                     *      ""
+                     *
+                     * pero queremos interpretarlos como uno:
+                     *
+                     *      "
+                     *
+                     *
+                     * Por eso avanzamos manualmente i.
+                     *
+                     * Así evitamos procesar la segunda
+                     * comilla otra vez.
+                     */
+                    i++;
+
+
+                } else {
+
+
+                    /*
+                     * Si no estamos ante "", entonces esta
+                     * comilla abre o cierra un campo.
+                     *
+                     *
+                     * Utilizamos:
+                     *
+                     *      !entreComillas
+                     *
+                     * para invertir el boolean.
+                     *
+                     *
+                     * false -> true
+                     *
+                     * significa:
+                     *
+                     *      acabamos de ENTRAR en comillas.
+                     *
+                     *
+                     * true -> false
+                     *
+                     * significa:
+                     *
+                     *      acabamos de SALIR de comillas.
+                     */
+                    entreComillas = !entreComillas;
+                }
+
+
+
+                /*
+                 * ====================================================
+                 * CASO 2: ENCONTRAMOS UNA COMA
+                 * ====================================================
+                 *
+                 * Una coma solamente funciona como separador
+                 * cuando estamos FUERA de las comillas.
+                 */
+            } else if (
+                    c == ',' && !entreComillas
+            ) {
+
+
+                /*
+                 * Hemos terminado un campo.
+                 *
+                 * Todo lo que hemos acumulado en:
+                 *
+                 *      actual
+                 *
+                 * pertenece a ese campo.
+                 *
+                 * Lo convertimos a String y lo añadimos.
+                 */
+                campos.add(actual.toString());
+
+
+                /*
+                 * Ahora necesitamos empezar a construir
+                 * el siguiente campo.
+                 *
+                 * Podríamos crear otro StringBuilder,
+                 * pero reutilizamos el mismo.
+                 *
+                 * setLength(0)
+                 *
+                 * lo vacía.
+                 *
+                 *
+                 * Antes:
+                 *
+                 *      actual = "Pérez, Juan"
+                 *
+                 * Después:
+                 *
+                 *      actual = ""
+                 */
+                actual.setLength(0);
+
+
+            } else {
+
+
+                /*
+                 * =================================================
+                 * CASO 3: CARÁCTER NORMAL
+                 * =================================================
+                 *
+                 * Si no es una comilla especial ni una coma
+                 * separadora, forma parte del contenido.
+                 *
+                 * Lo añadimos al campo actual.
+                 */
+                actual.append(c);
+            }
+        }
+
+
+        /*
+         * ========================================================
+         * ¿POR QUÉ HAY QUE AÑADIR UN CAMPO AL FINAL?
+         * ========================================================
+         *
+         * Nosotros añadimos un campo cuando encontramos ",".
+         *
+         * Pero el último campo NO termina con coma.
+         *
+         *
+         * Ejemplo:
+         *
+         *      1,Ana,Madrid
+         *
+         *
+         * Encontramos:
+         *
+         *      1,
+         *
+         * añadimos "1".
+         *
+         * Después:
+         *
+         *      Ana,
+         *
+         * añadimos "Ana".
+         *
+         * Finalmente leemos:
+         *
+         *      Madrid
+         *
+         * pero no aparece otra coma.
+         *
+         * Por eso, al terminar el for, tenemos que añadir
+         * manualmente el contenido que queda.
+         */
+        campos.add(actual.toString());
+
+
+        /*
+         * Devolvemos todos los campos encontrados.
+         */
+        return campos;
+    }
+
+
+
+    /**
+     * ============================================================
+     * EXPORTAR CLIENTES A CSV
+     * ============================================================
+     *
+     * Ahora utilizamos csv() para preparar correctamente
+     * cada uno de los campos.
+     */
+    public static void exportarClientesCsv(
+            Path ruta,
+            List<Cliente> clientes
+    ) throws IOException {
+
+
+        /*
+         * Abrimos el fichero para escritura.
+         */
+        try (BufferedWriter bw =
+                     Files.newBufferedWriter(
+                             ruta,
+                             StandardCharsets.UTF_8
+                     )) {
+
+
+            /*
+             * ====================================================
+             * CABECERA
+             * ====================================================
+             *
+             * A diferencia del TXT anterior, nuestro CSV tendrá
+             * una primera línea indicando el significado
+             * de cada columna.
+             *
+             *      id,nombre,email,telefono
+             *
+             * Esto hace que el fichero sea más descriptivo.
+             */
+            bw.write("id,nombre,email,telefono");
+
+            bw.newLine();
+
+
+            /*
+             * Recorremos todos los clientes.
+             */
+            for (Cliente c : clientes) {
+
+
+                /*
+                 * Construimos el registro CSV.
+                 *
+                 * Fíjate en una diferencia importante.
+                 *
+                 * Para id:
+                 *
+                 *      c.getId()
+                 *
+                 * no utilizamos csv() porque es un número.
+                 *
+                 *
+                 * Para los String sí utilizamos:
+                 *
+                 *      csv(...)
+                 *
+                 * porque podrían contener:
+                 *
+                 *      ,
+                 *      "
+                 *      salto de línea
+                 */
+                bw.write(
+                        c.getId()
+                                + ","
+                                + csv(c.getNombre())
+                                + ","
+                                + csv(c.getEmail())
+                                + ","
+                                + csv(c.getTelefono())
+                );
+
+
+                /*
+                 * Un Cliente = un registro CSV.
+                 */
+                bw.newLine();
+            }
+        }
+    }
+
+
+
+    /**
+     * ============================================================
+     * IMPORTAR CLIENTES DESDE CSV
+     * ============================================================
+     *
+     * Realiza el proceso contrario:
+     *
+     *      fichero CSV
+     *          ↓
+     *      parseCsv()
+     *          ↓
+     *      List<String>
+     *          ↓
+     *      Cliente
+     */
+    public static List<Cliente> importarClientesCsv(
+            Path ruta
+    ) throws IOException {
+
+
+        /*
+         * Lista donde guardaremos los clientes
+         * reconstruidos.
+         */
+        List<Cliente> resultado = new ArrayList<>();
+
+
+        /*
+         * Abrimos el fichero para lectura.
+         */
+        try (BufferedReader br =
+                     Files.newBufferedReader(
+                             ruta,
+                             StandardCharsets.UTF_8
+                     )) {
+
+
+            /*
+             * ====================================================
+             * LEEMOS LA CABECERA
+             * ====================================================
+             *
+             * Nuestro fichero empieza con:
+             *
+             *      id,nombre,email,telefono
+             *
+             * No queremos convertir esa línea en Cliente.
+             *
+             * Por eso hacemos una primera lectura.
+             */
+            String linea = br.readLine();
+
+
+            /*
+             * IMPORTANTE:
+             *
+             * El contenido leído anteriormente no se utiliza.
+             *
+             * El objetivo simplemente es avanzar el lector
+             * una línea.
+             *
+             *
+             * Después de:
+             *
+             *      br.readLine()
+             *
+             * el BufferedReader queda preparado para leer
+             * el primer Cliente.
+             */
+
+
+            /*
+             * Recorremos el resto de líneas.
+             */
+            while ((linea = br.readLine()) != null) {
+
+
+                /*
+                 * NO hacemos:
+                 *
+                 *      linea.split(",")
+                 *
+                 * porque ya sabemos que eso fallaría con:
+                 *
+                 *      "Pérez, Juan"
+                 *
+                 *
+                 * Utilizamos nuestro parser.
+                 */
+                List<String> c =
+                        parseCsv(linea);
+
+
+                /*
+                 * Un Cliente necesita cuatro campos:
+                 *
+                 *      id
+                 *      nombre
+                 *      email
+                 *      telefono
+                 */
+                if (c.size() != 4) {
+
+                    /*
+                     * Si el registro no tiene la estructura
+                     * esperada, lo ignoramos.
+                     */
+                    continue;
+                }
+
+
+                try {
+
+
+                    /*
+                     * c.get(0) contiene un String.
+                     *
+                     * Tenemos que convertirlo a int.
+                     */
+                    int id =
+                            Integer.parseInt(c.get(0));
+
+
+                    /*
+                     * Los demás campos ya son String.
+                     */
+                    String nombre =
+                            c.get(1);
+
+                    String email =
+                            c.get(2);
+
+                    String telefono =
+                            c.get(3);
+
+
+                    /*
+                     * Reconstruimos el Cliente.
+                     */
+                    Cliente cliente =
+                            new Cliente(
+                                    id,
+                                    nombre,
+                                    email,
+                                    telefono
+                            );
+
+
+                    /*
+                     * Añadimos el cliente.
                      */
                     resultado.add(cliente);
 
 
                     /*
-                     * =================================================
-                     * NumberFormatException
-                     * =================================================
+                     * También podríamos haberlo hecho directamente,
+                     * como aparece en vuestro código original:
                      *
-                     * ¿Qué sucede si encontramos?
+                     * resultado.add(
+                     *     new Cliente(
+                     *         Integer.parseInt(c.get(0)),
+                     *         c.get(1),
+                     *         c.get(2),
+                     *         c.get(3)
+                     *     )
+                     * );
                      *
-                     *      hola;Ana;ana@email.com;600123456
-                     *
-                     * Entonces intentaremos:
-                     *
-                     *      Integer.parseInt("hola")
-                     *
-                     * Pero "hola" no puede convertirse a int.
-                     *
-                     * Java lanzará:
-                     *
-                     *      NumberFormatException
-                     *
-                     *
-                     * A diferencia de IOException,
-                     * NumberFormatException es una
-                     * UNCHECKED EXCEPTION.
-                     *
-                     * Java NO nos obliga a capturarla.
-                     *
-                     * Sin embargo, nosotros decidimos hacerlo porque
-                     * sabemos que un fichero externo puede contener
-                     * datos incorrectos.
+                     * Separarlo en variables ocupa más código,
+                     * pero inicialmente es más fácil de explicar.
                      */
-                } catch (NumberFormatException ex) {
+
+
+                } catch (NumberFormatException e) {
 
 
                     /*
-                     * System.err
+                     * Si el id no puede convertirse en int:
                      *
-                     * representa la salida estándar de errores.
+                     *      ABC,Ana,email,telefono
                      *
-                     * La utilizamos para diferenciar conceptualmente
-                     * un mensaje normal de un mensaje de error.
+                     * descartamos el registro e informamos
+                     * del problema.
                      */
                     System.err.println(
-                            "Cliente incorrecto: "
-                                    + linea
+                            "Cliente erróneo: " + linea
                     );
                 }
             }
@@ -847,39 +1229,10 @@ public class GestorFicheros {
 
 
         /*
-         * ========================================================
-         * DEVOLVEMOS LOS RESULTADOS
-         * ========================================================
-         *
-         * Después de leer todo el fichero tenemos:
-         *
-         *      resultado
-         *
-         * con todos los clientes que se han podido
-         * reconstruir correctamente.
-         *
-         *
-         * Por ejemplo:
-         *
-         * clientes.txt
-         *
-         *      1;Ana;ana@email.com;600111111
-         *      ABC;Pedro;pedro@email.com;600222222
-         *      3;Lucía;lucia@email.com;600333333
-         *
-         *
-         * Resultado:
-         *
-         *      Cliente Ana
-         *      Cliente Lucía
-         *
-         * La línea de Pedro se descarta porque:
-         *
-         *      Integer.parseInt("ABC")
-         *
-         * produce NumberFormatException.
+         * Devolvemos todos los clientes importados.
          */
         return resultado;
     }
+
 
 }
